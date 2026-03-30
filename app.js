@@ -56,14 +56,16 @@ const authLimiter = rateLimit({
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.DATABASE_LOCAL);
+    const DB_URI = process.env.MONGO_URI || process.env.DATABASE_LOCAL;
+
+    await mongoose.connect(DB_URI);
+
     console.log("Connected to MongoDB");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
     process.exit(1);
   }
 };
-
 connectDB();
 
 /* ----------------------------- ROUTES ----------------------------- */
