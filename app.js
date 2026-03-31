@@ -45,7 +45,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Handle ALL preflight OPTIONS requests immediately
-app.options("*", cors(corsOptions));
+app.options(/(.*)/, cors(corsOptions));
 
 /* ----------------------------- SECURITY ----------------------------- */
 
