@@ -22,15 +22,8 @@ dotenv.config({ path: "./config.env" });
 
 const app = express();
 
-/* ----------------------------- SECURITY ----------------------------- */
+/* ----------------------------- CORS (must be first) ----------------------------- */
 
-// secure HTTP headers
-app.use(helmet());
-
-// request logging
-app.use(morgan("dev"));
-
-// CORS config
 const allowedOrigins = [
   "http://localhost:5173",
   "https://aurafrontend.netlify.app",
@@ -48,20 +41,41 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
+// Apply CORS globally before anything else
 app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
 
-// body parser
+// Handle ALL preflight OPTIONS requests immediately
+app.options("*", cors(corsOptions));
+
+/* ----------------------------- SECURITY ----------------------------- */
+
+// Helmet after CORS so it doesn't interfere with CORS headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// Request logging
+app.use(morgan("dev"));
+
+/* ----------------------------- BODY PARSER ----------------------------- */
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// rate limiter for auth routes
+/* ----------------------------- RATE LIMITER ----------------------------- */
+
+// Rate limiter for auth routes only
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: {
-    status: "error",
-    message: "Too many login attempts. Please try again after 15 minutes.",
+  // Ensure CORS headers are preserved even on rate-limit rejections
+  handler: (req, res) => {
+    res.status(429).json({
+      status: "error",
+      message: "Too many login attempts. Please try again after 15 minutes.",
+    });
   },
 });
 
@@ -81,10 +95,10 @@ connectDB();
 
 /* ----------------------------- ROUTES ----------------------------- */
 
-// public auth routes
+// Public auth routes
 app.use("/api/auth", authLimiter, authRoutes);
 
-// protected app routes
+// Protected app routes
 app.use("/api/weighbridge", protect, weighbridgeRoutes);
 app.use("/api/expenses", protect, expenseRoutes);
 app.use("/api/diesel", protect, dieselRoutes);
