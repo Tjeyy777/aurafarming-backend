@@ -31,12 +31,25 @@ app.use(helmet());
 app.use(morgan("dev"));
 
 // CORS config
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "*",
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://aurafrontend.netlify.app",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 // body parser
 app.use(express.json({ limit: "50mb" }));
@@ -44,8 +57,8 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // rate limiter for auth routes
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 10, // max 10 requests per 15 mins per IP
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: {
     status: "error",
     message: "Too many login attempts. Please try again after 15 minutes.",
@@ -57,9 +70,7 @@ const authLimiter = rateLimit({
 const connectDB = async () => {
   try {
     const DB_URI = process.env.MONGO_URI || process.env.DATABASE_LOCAL;
-
     await mongoose.connect(DB_URI);
-
     console.log("Connected to MongoDB");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
