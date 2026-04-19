@@ -4,24 +4,32 @@ const employeeSchema = new mongoose.Schema({
   employeeCode: {
     type: String,
     required: true,
+    immutable: true, // 🔥 NEVER CHANGE
   },
 
   name: {
     type: String,
-    required: true,
+    default: "Unknown",
   },
 
-  phone: {
-    type: String,
+  phone: String,
+  position: String,
+
+  role: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "EmployeeRole",
+    required: false, // 🔥 now optional
   },
 
-  position: {
-    type: String,
+  subRole: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "EmployeeRole",
+    default: null,
   },
 
   dailyWage: {
     type: Number,
-    required: true,
+    default: 0, // 🔥 optional
   },
 
   overtimeRate: {
@@ -29,25 +37,27 @@ const employeeSchema = new mongoose.Schema({
     default: 0,
   },
 
+  isConfigured: {
+    type: Boolean,
+    default: false, // 🔥 mark after editing
+  },
+
   joinDate: {
     type: Date,
     default: Date.now,
   },
-  profileImage: {
-    type: String,
-  },
-  idCardImage: {
-    type: String,
-  },
+
+  profileImage: String,
+  idCardImage: String,
+
   documentType: {
     type: String,
     default: "Aadhar Card",
   },
 
-  status: {
-    type: String,
-    enum: ["active", "inactive"],
-    default: "active",
+  isActive: {
+    type: Boolean,
+    default: true,
   },
 
   createdBy: {
@@ -62,7 +72,7 @@ const employeeSchema = new mongoose.Schema({
   },
 });
 
-// Employee code must be unique per user
+// Unique employeeCode per user
 employeeSchema.index({ employeeCode: 1, createdBy: 1 }, { unique: true });
 
 module.exports = mongoose.model("Employee", employeeSchema);

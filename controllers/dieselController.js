@@ -24,7 +24,6 @@ exports.createDieselEntry = async (req, res) => {
       const machine = await Machine.findOne({
         _id: machineId,
         isDeleted: false,
-        ownershipType: 'owned',
         createdBy: req.user._id
       });
 
@@ -55,7 +54,7 @@ exports.createDieselEntry = async (req, res) => {
 
     const populatedEntry = await DieselEntry.findById(dieselEntry._id).populate(
       'machineId',
-      'machineName machineCode machineType ownershipType'
+      'machineName machineCode machineType'
     );
 
     res.status(201).json({ status: 'success', data: populatedEntry });
@@ -79,7 +78,7 @@ exports.getAllDieselEntries = async (req, res) => {
     }
 
     const entries = await DieselEntry.find(filter)
-      .populate('machineId', 'machineName machineCode machineType ownershipType')
+      .populate('machineId', 'machineName machineCode machineType')
       .sort({ date: -1, createdAt: -1 });
 
     res.status(200).json({ status: 'success', results: entries.length, data: entries });
@@ -93,7 +92,7 @@ exports.getSingleDieselEntry = async (req, res) => {
     const entry = await DieselEntry.findOne({
       _id: req.params.id,
       createdBy: req.user._id
-    }).populate('machineId', 'machineName machineCode machineType ownershipType');
+    }).populate('machineId', 'machineName machineCode machineType');
 
     if (!entry) {
       return res.status(404).json({ status: 'error', message: 'Diesel entry not found' });
@@ -138,7 +137,6 @@ exports.updateDieselEntry = async (req, res) => {
       const machine = await Machine.findOne({
         _id: machineId,
         isDeleted: false,
-        ownershipType: 'owned',
         createdBy: req.user._id
       });
 
@@ -170,7 +168,7 @@ exports.updateDieselEntry = async (req, res) => {
 
     const populatedEntry = await DieselEntry.findById(existingEntry._id).populate(
       'machineId',
-      'machineName machineCode machineType ownershipType'
+      'machineName machineCode machineType'
     );
 
     res.status(200).json({ status: 'success', data: populatedEntry });
@@ -200,8 +198,8 @@ exports.getOwnedMachinesForDiesel = async (req, res) => {
   try {
     const machines = await Machine.find({
       isDeleted: false,
-      ownershipType: 'owned',
       status: 'active',
+      fuelType: 'diesel',
       createdBy: req.user._id
     })
       .select('machineName machineCode machineType currentMeterReading')

@@ -24,11 +24,6 @@ const machineSchema = new mongoose.Schema(
       ],
       required: [true, 'Machine type is required']
     },
-    ownershipType: {
-      type: String,
-      enum: ['owned', 'rented'],
-      required: [true, 'Ownership type is required']
-    },
     fuelType: {
       type: String,
       enum: ['diesel', 'electric', 'none'],
@@ -38,11 +33,6 @@ const machineSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Current meter reading is required'],
       min: [0, 'Meter reading cannot be negative']
-    },
-    hourlyRate: {
-      type: Number,
-      default: 0,
-      min: [0, 'Hourly rate cannot be negative']
     },
     status: {
       type: String,
@@ -100,10 +90,6 @@ machineSchema.pre('save', function () {
       Number(this.serviceIntervalHours || 0);
   } else {
     this.nextServiceDueAt = 0;
-  }
-
-  if (this.ownershipType === 'owned') {
-    this.hourlyRate = 0;
   }
 });
 

@@ -1,15 +1,22 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const attendanceController = require("../controllers/attendenceController");
+const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-router.post("/", attendanceController.markAttendance);
-router.get("/", attendanceController.getDailyAttendance);
-router.get("/employee/:id", attendanceController.getEmployeeAttendance);
-router.get("/report/monthly", attendanceController.getMonthlyReport);
+// Biometric sync
+router.post("/sync-biometric", protect, attendanceController.syncBiometric);
 
-router.get("/report/weekly", attendanceController.getWeeklyReport);
-router.get("/report/daily", attendanceController.getDailyReport);
+// Manual attendance marking + daily fetch
+router.post("/", protect, attendanceController.markAttendance);
+router.get("/", protect, attendanceController.getDailyAttendance);
+
+// Employee history
+router.get("/employee/:id", protect, attendanceController.getEmployeeAttendance);
+
+// Reports
+router.get("/report/monthly", protect, attendanceController.getMonthlyReport);
+router.get("/report/weekly", protect, attendanceController.getWeeklyReport);
+router.get("/report/daily", protect, attendanceController.getDailyReport);
 
 module.exports = router;

@@ -17,7 +17,10 @@ const getServiceStatus = (machine) => {
 
 exports.createMachine = async (req, res) => {
   try {
-    const machine = await Machine.create({ ...req.body, createdBy: req.user._id });
+    const machine = await Machine.create({ 
+      ...req.body, 
+      createdBy: req.user._id 
+    });
 
     res.status(201).json({
       status: "success",
@@ -33,7 +36,6 @@ exports.getAllMachines = async (req, res) => {
     const filter = { isDeleted: false, createdBy: req.user._id };
 
     if (req.query.machineType) filter.machineType = req.query.machineType;
-    if (req.query.ownershipType) filter.ownershipType = req.query.ownershipType;
     if (req.query.status) filter.status = req.query.status;
 
     let machines = await Machine.find(filter).sort({ createdAt: -1 });
@@ -74,7 +76,8 @@ exports.updateMachine = async (req, res) => {
       return res.status(404).json({ status: "error", message: "Machine not found" });
     }
 
-    Object.assign(machine, req.body);
+    const updateData = { ...req.body };
+    Object.assign(machine, updateData);
     await machine.save();
 
     res.status(200).json({
@@ -126,14 +129,10 @@ exports.createMachineLog = async (req, res) => {
     }
 
     const totalHoursWorked = closing - openingMeterReading;
-    let operatingCost = 0;
-    if (machine.ownershipType === "rented") {
-      operatingCost = totalHoursWorked * Number(machine.hourlyRate || 0);
-    }
 
     const log = await MachineLog.create({
       machineId, date, openingMeterReading, closingMeterReading: closing,
-      totalHoursWorked, operatingCost, notes,
+      totalHoursWorked, operatingCost: 0, notes,
     });
 
     machine.currentMeterReading = closing;
@@ -153,12 +152,10 @@ exports.getMachineLogs = async (req, res) => {
     const filter = {};
 
     if (req.query.machineId) {
-      // Verify machine belongs to user
       const machine = await Machine.findOne({ _id: req.query.machineId, createdBy: req.user._id });
       if (!machine) return res.status(404).json({ status: "error", message: "Machine not found" });
       filter.machineId = req.query.machineId;
     } else {
-      // Restrict to logs for this user's machines
       const userMachines = await Machine.find({ createdBy: req.user._id, isDeleted: false }, "_id");
       filter.machineId = { $in: userMachines.map((m) => m._id) };
     }
@@ -171,7 +168,7 @@ exports.getMachineLogs = async (req, res) => {
     }
 
     const logs = await MachineLog.find(filter)
-      .populate({ path: "machineId", match: { isDeleted: false }, select: "machineName machineCode machineType ownershipType currentMeterReading hourlyRate status" })
+      .populate({ path: "machineId", match: { isDeleted: false }, select: "machineName machineCode machineType currentMeterReading status" })
       .sort({ date: -1, createdAt: -1 });
 
     const filteredLogs = logs.filter((log) => log.machineId !== null);
@@ -216,20 +213,16 @@ exports.updateMachineLog = async (req, res) => {
     const openingMeterReading = req.body.openingMeterReading !== undefined ? Number(req.body.openingMeterReading) : log.openingMeterReading;
 
     if (closingMeterReading < openingMeterReading) {
-      return res.status(400).json({ status: "error", message: "Closing meter reading cannot be less than opening meter reading" });
+      return res.status(400).json({ status: "error", message: "Closing meter cannot be less than opening meter" });
     }
 
     const totalHoursWorked = closingMeterReading - openingMeterReading;
-    let operatingCost = 0;
-    if (machine.ownershipType === "rented") {
-      operatingCost = totalHoursWorked * Number(machine.hourlyRate || 0);
-    }
 
     log.date = req.body.date || log.date;
     log.openingMeterReading = openingMeterReading;
     log.closingMeterReading = closingMeterReading;
     log.totalHoursWorked = totalHoursWorked;
-    log.operatingCost = operatingCost;
+    log.operatingCost = 0;
     log.notes = req.body.notes !== undefined ? req.body.notes : log.notes;
 
     await log.save();

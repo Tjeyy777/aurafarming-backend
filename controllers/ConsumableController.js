@@ -64,6 +64,23 @@ exports.updateItem = async (req, res) => {
   }
 };
 
+exports.deleteItem = async (req, res) => {
+  try {
+    const item = await ConsumableItem.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
+
+    if (!item) {
+      return res.status(404).json({ status: 'error', message: 'Consumable item not found' });
+    }
+
+    res.status(204).json({ status: 'success', data: null });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 exports.addTransaction = async (req, res) => {
   try {
     const { itemId, date, type, quantity, reason, notes } = req.body;

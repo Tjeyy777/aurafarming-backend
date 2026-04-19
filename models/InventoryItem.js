@@ -12,6 +12,12 @@ const inventoryItemSchema = new mongoose.Schema(
       enum: ['explosive', 'detonator', 'fuse', 'accessory', 'other'],
       required: [true, 'Category is required']
     },
+    // --- NEW FIELD ---
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Seller',
+      required: [true, 'Please select a seller']
+    },
     unit: {
       type: String,
       required: [true, 'Unit is required'],
@@ -44,12 +50,10 @@ const inventoryItemSchema = new mongoose.Schema(
       required: true
     }
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
-// Item name must be unique per user
-inventoryItemSchema.index({ name: 1, createdBy: 1 }, { unique: true });
+// Updated index: Item name is unique per user AND per seller
+inventoryItemSchema.index({ name: 1, createdBy: 1, seller: 1 }, { unique: true });
 
 module.exports = mongoose.model('InventoryItem', inventoryItemSchema);
