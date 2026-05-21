@@ -3,44 +3,92 @@ const WeighbridgeEntry = require('../models/weighbridgeModel');
 const normalizeVehicleNumber = (vehicleNumber = '') =>
   vehicleNumber.trim().toUpperCase();
 
-const getStartOfDay = (date = new Date()) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+const getTzOffset = (req) => {
+  const header = req.headers['x-timezone-offset'];
+  if (header !== undefined && header !== null && header !== '') {
+    const val = Number(header);
+    if (!isNaN(val)) return val;
+  }
+  return null;
 };
 
-const getEndOfDay = (date = new Date()) => {
+const getStartOfDay = (date = new Date(), tzOffsetMinutes) => {
   const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  if (tzOffsetMinutes === undefined || tzOffsetMinutes === null) {
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  const clientLocalTime = d.getTime() - (tzOffsetMinutes * 60 * 1000);
+  const clientLocalDate = new Date(clientLocalTime);
+  clientLocalDate.setUTCHours(0, 0, 0, 0);
+  return new Date(clientLocalDate.getTime() + (tzOffsetMinutes * 60 * 1000));
 };
 
-const getStartOfWeek = (date = new Date()) => {
+const getEndOfDay = (date = new Date(), tzOffsetMinutes) => {
   const d = new Date(date);
-  const day = d.getDay(); // sunday = 0
+  if (tzOffsetMinutes === undefined || tzOffsetMinutes === null) {
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  const clientLocalTime = d.getTime() - (tzOffsetMinutes * 60 * 1000);
+  const clientLocalDate = new Date(clientLocalTime);
+  clientLocalDate.setUTCHours(23, 59, 59, 999);
+  return new Date(clientLocalDate.getTime() + (tzOffsetMinutes * 60 * 1000));
+};
+
+const getStartOfWeek = (date = new Date(), tzOffsetMinutes) => {
+  const d = new Date(date);
+  if (tzOffsetMinutes === undefined || tzOffsetMinutes === null) {
+    const day = d.getDay(); // sunday = 0
+    const diff = day === 0 ? 6 : day - 1; // monday start
+    d.setDate(d.getDate() - diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  const clientLocalTime = d.getTime() - (tzOffsetMinutes * 60 * 1000);
+  const clientLocalDate = new Date(clientLocalTime);
+  const day = clientLocalDate.getUTCDay(); // sunday = 0
   const diff = day === 0 ? 6 : day - 1; // monday start
-  d.setDate(d.getDate() - diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  clientLocalDate.setUTCDate(clientLocalDate.getUTCDate() - diff);
+  clientLocalDate.setUTCHours(0, 0, 0, 0);
+  return new Date(clientLocalDate.getTime() + (tzOffsetMinutes * 60 * 1000));
 };
 
-const getEndOfWeek = (date = new Date()) => {
-  const d = getStartOfWeek(date);
-  d.setDate(d.getDate() + 6);
-  d.setHours(23, 59, 59, 999);
-  return d;
+const getEndOfWeek = (date = new Date(), tzOffsetMinutes) => {
+  const d = getStartOfWeek(date, tzOffsetMinutes);
+  const startMs = d.getTime();
+  const endMs = startMs + (7 * 24 * 60 * 60 * 1000) - 1; // 7 days minus 1ms
+  return new Date(endMs);
 };
 
-const getStartOfMonth = (date = new Date()) => {
-  const d = new Date(date.getFullYear(), date.getMonth(), 1);
-  d.setHours(0, 0, 0, 0);
-  return d;
+const getStartOfMonth = (date = new Date(), tzOffsetMinutes) => {
+  const d = new Date(date);
+  if (tzOffsetMinutes === undefined || tzOffsetMinutes === null) {
+    const res = new Date(d.getFullYear(), d.getMonth(), 1);
+    res.setHours(0, 0, 0, 0);
+    return res;
+  }
+  const clientLocalTime = d.getTime() - (tzOffsetMinutes * 60 * 1000);
+  const clientLocalDate = new Date(clientLocalTime);
+  clientLocalDate.setUTCMonth(clientLocalDate.getUTCMonth(), 1);
+  clientLocalDate.setUTCHours(0, 0, 0, 0);
+  return new Date(clientLocalDate.getTime() + (tzOffsetMinutes * 60 * 1000));
 };
 
-const getEndOfMonth = (date = new Date()) => {
-  const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  d.setHours(23, 59, 59, 999);
-  return d;
+const getEndOfMonth = (date = new Date(), tzOffsetMinutes) => {
+  const d = new Date(date);
+  if (tzOffsetMinutes === undefined || tzOffsetMinutes === null) {
+    const res = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    res.setHours(23, 59, 59, 999);
+    return res;
+  }
+  const clientLocalTime = d.getTime() - (tzOffsetMinutes * 60 * 1000);
+  const clientLocalDate = new Date(clientLocalTime);
+  clientLocalDate.setUTCMonth(clientLocalDate.getUTCMonth() + 1, 1);
+  clientLocalDate.setUTCHours(0, 0, 0, 0);
+  const nextMonthStartMs = clientLocalDate.getTime();
+  const endMs = nextMonthStartMs - 1;
+  return new Date(endMs + (tzOffsetMinutes * 60 * 1000));
 };
 
 const isValidDate = (value) => {
@@ -249,6 +297,7 @@ exports.getAllWeighbridgeEntries = async (req, res) => {
 
     const { currentPage, perPage, skip } = getPaginationValues(page, limit, 20);
 
+    const tzOffset = getTzOffset(req);
     const filter = { isDeleted: false, createdBy: req.user._id };
 
     if (status) {
@@ -269,8 +318,8 @@ exports.getAllWeighbridgeEntries = async (req, res) => {
 
       const selectedDate = new Date(date);
       filter.entryTime = {
-        $gte: getStartOfDay(selectedDate),
-        $lte: getEndOfDay(selectedDate)
+        $gte: getStartOfDay(selectedDate, tzOffset),
+        $lte: getEndOfDay(selectedDate, tzOffset)
       };
     }
 
@@ -284,7 +333,7 @@ exports.getAllWeighbridgeEntries = async (req, res) => {
             message: 'Invalid fromDate'
           });
         }
-        filter.entryTime.$gte = getStartOfDay(new Date(fromDate));
+        filter.entryTime.$gte = getStartOfDay(new Date(fromDate), tzOffset);
       }
 
       if (toDate) {
@@ -294,7 +343,7 @@ exports.getAllWeighbridgeEntries = async (req, res) => {
             message: 'Invalid toDate'
           });
         }
-        filter.entryTime.$lte = getEndOfDay(new Date(toDate));
+        filter.entryTime.$lte = getEndOfDay(new Date(toDate), tzOffset);
       }
     }
 
@@ -569,13 +618,14 @@ exports.getTodayEntries = async (req, res) => {
     const { currentPage, perPage, skip } = getPaginationValues(page, limit, 50);
 
     const now = new Date();
+    const tzOffset = getTzOffset(req);
 
     const filter = {
       isDeleted: false,
       createdBy: req.user._id,
       entryTime: {
-        $gte: getStartOfDay(now),
-        $lte: getEndOfDay(now)
+        $gte: getStartOfDay(now, tzOffset),
+        $lte: getEndOfDay(now, tzOffset)
       }
     };
 
@@ -614,6 +664,7 @@ exports.getTodayEntries = async (req, res) => {
 exports.getProductionSummary = async (req, res) => {
   try {
     const now = new Date();
+    const tzOffset = getTzOffset(req);
 
     const [daily, weekly, monthly] = await Promise.all([
       WeighbridgeEntry.aggregate([
@@ -623,8 +674,8 @@ exports.getProductionSummary = async (req, res) => {
             status: 'completed',
             createdBy: req.user._id,
             entryTime: {
-              $gte: getStartOfDay(now),
-              $lte: getEndOfDay(now)
+              $gte: getStartOfDay(now, tzOffset),
+              $lte: getEndOfDay(now, tzOffset)
             }
           }
         },
@@ -643,8 +694,8 @@ exports.getProductionSummary = async (req, res) => {
             status: 'completed',
             createdBy: req.user._id,
             entryTime: {
-              $gte: getStartOfWeek(now),
-              $lte: getEndOfWeek(now)
+              $gte: getStartOfWeek(now, tzOffset),
+              $lte: getEndOfWeek(now, tzOffset)
             }
           }
         },
@@ -663,8 +714,8 @@ exports.getProductionSummary = async (req, res) => {
             status: 'completed',
             createdBy: req.user._id,
             entryTime: {
-              $gte: getStartOfMonth(now),
-              $lte: getEndOfMonth(now)
+              $gte: getStartOfMonth(now, tzOffset),
+              $lte: getEndOfMonth(now, tzOffset)
             }
           }
         },
@@ -699,6 +750,7 @@ exports.getDailyHistorySummary = async (req, res) => {
   try {
     const { page = 1, limit = 15 } = req.query;
     const { currentPage, perPage, skip } = getPaginationValues(page, limit, 15);
+    const timezone = req.headers['x-timezone'] || 'UTC';
 
     const summary = await WeighbridgeEntry.aggregate([
       {
@@ -710,9 +762,9 @@ exports.getDailyHistorySummary = async (req, res) => {
       {
         $group: {
           _id: {
-            year: { $year: '$entryTime' },
-            month: { $month: '$entryTime' },
-            day: { $dayOfMonth: '$entryTime' }
+            year: { $year: { date: '$entryTime', timezone } },
+            month: { $month: { date: '$entryTime', timezone } },
+            day: { $dayOfMonth: { date: '$entryTime', timezone } }
           },
           totalEntries: { $sum: 1 },
           completedEntries: {
@@ -793,13 +845,14 @@ exports.getEntriesByDay = async (req, res) => {
 
     const { currentPage, perPage, skip } = getPaginationValues(page, limit, 50);
     const selectedDate = new Date(date);
+    const tzOffset = getTzOffset(req);
 
     const filter = {
       isDeleted: false,
       createdBy: req.user._id,
       entryTime: {
-        $gte: getStartOfDay(selectedDate),
-        $lte: getEndOfDay(selectedDate)
+        $gte: getStartOfDay(selectedDate, tzOffset),
+        $lte: getEndOfDay(selectedDate, tzOffset)
       }
     };
 
@@ -815,8 +868,8 @@ exports.getEntriesByDay = async (req, res) => {
             isDeleted: false,
             status: 'completed',
             entryTime: {
-              $gte: getStartOfDay(selectedDate),
-              $lte: getEndOfDay(selectedDate)
+              $gte: getStartOfDay(selectedDate, tzOffset),
+              $lte: getEndOfDay(selectedDate, tzOffset)
             }
           }
         },
