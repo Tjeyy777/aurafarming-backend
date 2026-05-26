@@ -1,5 +1,6 @@
 const Employee = require("../models/Employee");
 const EmployeeRole = require("../models/EmployeeRole");
+const { getOwnerId } = require("../middleware/authMiddleware");
 
 // ==========================
 // ROLE CRUD
@@ -9,7 +10,7 @@ exports.createRole = async (req, res) => {
   try {
     const role = await EmployeeRole.create({
       ...req.body,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
     res.status(201).json({ status: "success", data: role });
   } catch (error) {
@@ -19,7 +20,7 @@ exports.createRole = async (req, res) => {
 
 exports.getRoles = async (req, res) => {
   try {
-    const roles = await EmployeeRole.find({ createdBy: req.user._id })
+    const roles = await EmployeeRole.find({ createdBy: getOwnerId(req) })
       .populate("parentRole", "title")
       .sort({ title: 1 });
     res.status(200).json({ status: "success", data: roles });
@@ -31,7 +32,7 @@ exports.getRoles = async (req, res) => {
 exports.updateRole = async (req, res) => {
   try {
     const role = await EmployeeRole.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: getOwnerId(req) },
       req.body,
       { new: true, runValidators: true }
     );
@@ -46,7 +47,7 @@ exports.deleteRole = async (req, res) => {
   try {
     const role = await EmployeeRole.findOneAndDelete({
       _id: req.params.id,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
     if (!role) return res.status(404).json({ status: "error", message: "Role not found" });
     res.status(204).json({ status: "success", data: null });
@@ -64,7 +65,7 @@ exports.createEmployee = async (req, res) => {
   try {
     const employee = await Employee.create({
       ...req.body,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     const populatedEmployee = await employee.populate([
@@ -86,7 +87,7 @@ exports.createEmployee = async (req, res) => {
 
 exports.getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find({ createdBy: req.user._id })
+    const employees = await Employee.find({ createdBy: getOwnerId(req) })
       .populate("role", "title")
       .populate("subRole", "title parentRole");
     res.status(200).json({
@@ -102,7 +103,7 @@ exports.getEmployees = async (req, res) => {
 exports.updateEmployee = async (req, res) => {
   try {
     const employee = await Employee.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: getOwnerId(req) },
       req.body,
       { new: true }
     )
@@ -125,7 +126,7 @@ exports.updateEmployee = async (req, res) => {
 exports.deleteEmployee = async (req, res) => {
   try {
     const employee = await Employee.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: getOwnerId(req) },
       { isActive: false },
       { new: true }
     );

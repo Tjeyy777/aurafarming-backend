@@ -1,4 +1,5 @@
 const RentedVehicle = require('../models/Rentedvehicle');
+const { getOwnerId } = require("../middleware/authMiddleware");
 const RentedMachineLog = require('../models/RentedMachinelog');
 
 // ─── RENTED VEHICLE MASTER CRUD ──────────────────────────────────────────────
@@ -7,7 +8,7 @@ exports.createRentedVehicle = async (req, res) => {
   try {
     const vehicle = await RentedVehicle.create({
       ...req.body,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     res.status(201).json({
@@ -26,7 +27,7 @@ exports.getAllRentedVehicles = async (req, res) => {
   try {
     const filter = {
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     };
 
     if (req.query.status) {
@@ -57,7 +58,7 @@ exports.getSingleRentedVehicle = async (req, res) => {
     const vehicle = await RentedVehicle.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!vehicle) {
@@ -84,7 +85,7 @@ exports.updateRentedVehicle = async (req, res) => {
     const vehicle = await RentedVehicle.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!vehicle) {
@@ -115,7 +116,7 @@ exports.deleteRentedVehicle = async (req, res) => {
       {
         _id: req.params.id,
         isDeleted: false,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       },
       { isDeleted: true },
       { new: true }
@@ -150,7 +151,7 @@ exports.createRentedLog = async (req, res) => {
     const vehicle = await RentedVehicle.findOne({
       _id: vehicleId,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!vehicle) {
@@ -181,7 +182,7 @@ exports.createRentedLog = async (req, res) => {
       parentLogId: parentLogId || null,
       tripPurpose: tripPurpose || '',
       hourlyRate: vehicle.hourlyRate,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     // Populate vehicle details
@@ -202,14 +203,14 @@ exports.createRentedLog = async (req, res) => {
 exports.getRentedLogs = async (req, res) => {
   try {
     const filter = {
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     };
 
     // Filter by vehicle
     if (req.query.vehicleId) {
       const vehicle = await RentedVehicle.findOne({
         _id: req.query.vehicleId,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       });
       
       if (!vehicle) {
@@ -275,7 +276,7 @@ exports.updateRentedLog = async (req, res) => {
     const vehicle = await RentedVehicle.findOne({
       _id: log.vehicleId,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!vehicle) {
@@ -337,7 +338,7 @@ exports.deleteRentedLog = async (req, res) => {
     // Verify ownership
     const vehicle = await RentedVehicle.findOne({
       _id: log.vehicleId,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!vehicle) {
@@ -383,7 +384,7 @@ exports.createTripFromLog = async (req, res) => {
     }
 
     // Verify ownership
-    if (parentLog.createdBy.toString() !== req.user._id.toString()) {
+    if (parentLog.createdBy.toString() !== getOwnerId(req).toString()) {
       return res.status(403).json({
         status: 'error',
         message: 'Not authorized'
@@ -400,7 +401,7 @@ exports.createTripFromLog = async (req, res) => {
       openingMeter: Number(openingMeter),
       closingMeter: closingMeter !== null && closingMeter !== undefined ? Number(closingMeter) : null,
       hourlyRate: parentLog.vehicleId.hourlyRate,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     await tripLog.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
@@ -424,7 +425,7 @@ exports.getRentedSummary = async (req, res) => {
     const { vehicleId, dateFrom, dateTo } = req.query;
 
     const filter = {
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     };
 
     if (vehicleId) {

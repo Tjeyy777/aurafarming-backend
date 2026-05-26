@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getOwnerId } = require("../middleware/authMiddleware");
 const { fetchBiometricData } = require("../services/biometricService");
 const Employee = require("../models/Employee");
 const Attendance = require("../models/Attendence");
@@ -41,7 +42,7 @@ exports.syncBiometric = async (req, res) => {
       // Find or create employee belonging to this user
       let employee = await Employee.findOne({
         employeeCode: item.Empcode,
-        createdBy: req.user._id,
+        createdBy: getOwnerId(req),
       });
 
       if (!employee) {
@@ -49,7 +50,7 @@ exports.syncBiometric = async (req, res) => {
           employeeCode: item.Empcode,
           name: item.Name || `Employee ${item.Empcode}`,
           dailyWage: 0,
-          createdBy: req.user._id,
+          createdBy: getOwnerId(req),
           isActive: true
         });
       } else {
@@ -94,7 +95,7 @@ exports.syncBiometric = async (req, res) => {
 
     // Get all active employees for this user
     const allActiveEmployees = await Employee.find({
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
       isActive: true,
     }, "_id");
 
@@ -155,7 +156,7 @@ exports.markAttendance = async (req, res) => {
     // Only fetch employees belonging to this user
     const employees = await Employee.find({
       _id: { $in: employeeIds },
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     const employeeMap = new Map(
@@ -207,7 +208,7 @@ exports.getDailyAttendance = async (req, res) => {
     const nextDay = new Date(day);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const userEmployees = await Employee.find({ createdBy: req.user._id, isActive: true }, "_id");
+    const userEmployees = await Employee.find({ createdBy: getOwnerId(req), isActive: true }, "_id");
     const employeeIds = userEmployees.map((e) => e._id);
 
     const records = await Attendance.find({
@@ -237,7 +238,7 @@ exports.getEmployeeAttendance = async (req, res) => {
   try {
     const employee = await Employee.findOne({
       _id: req.params.id,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
     if (!employee) {
       return res.status(404).json({ status: "error", message: "Employee not found" });
@@ -262,7 +263,7 @@ exports.getMonthlyReport = async (req, res) => {
 
     const employee = await Employee.findOne({
       _id: employeeId,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
     if (!employee) {
       return res.status(404).json({ status: "error", message: "Employee not found" });
@@ -336,7 +337,7 @@ exports.getWeeklyReport = async (req, res) => {
 
     const employee = await Employee.findOne({
       _id: employeeId,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
     if (!employee) {
       return res.status(404).json({ status: "error", message: "Employee not found" });
@@ -415,7 +416,7 @@ exports.getDailyReport = async (req, res) => {
 
     const employee = await Employee.findOne({
       _id: employeeId,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
     if (!employee) {
       return res.status(404).json({ status: "error", message: "Employee not found" });

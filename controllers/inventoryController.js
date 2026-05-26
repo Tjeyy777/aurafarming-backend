@@ -1,4 +1,5 @@
 const InventoryItem = require('../models/InventoryItem');
+const { getOwnerId } = require("../middleware/authMiddleware");
 const InventoryTransaction = require('../models/InventoryTransaction');
 const Seller = require('../models/Seller');
 
@@ -11,7 +12,7 @@ exports.createSeller = async (req, res) => {
   try {
     const seller = await Seller.create({
       ...req.body,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     res.status(201).json({ status: 'success', data: seller });
@@ -22,7 +23,7 @@ exports.createSeller = async (req, res) => {
 
 exports.getAllSellers = async (req, res) => {
   try {
-    const sellers = await Seller.find({ createdBy: req.user._id })
+    const sellers = await Seller.find({ createdBy: getOwnerId(req) })
       .sort({ name: 1 });
 
     res.status(200).json({
@@ -38,7 +39,7 @@ exports.getAllSellers = async (req, res) => {
 exports.updateSeller = async (req, res) => {
   try {
     const seller = await Seller.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: getOwnerId(req) },
       req.body,
       { new: true, runValidators: true }
     );
@@ -57,7 +58,7 @@ exports.deleteSeller = async (req, res) => {
   try {
     const seller = await Seller.findOneAndDelete({
       _id: req.params.id,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!seller) {
@@ -82,7 +83,7 @@ exports.createItem = async (req, res) => {
     if (req.body.seller) {
       const seller = await Seller.findOne({
         _id: req.body.seller,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       });
 
       if (!seller) {
@@ -95,7 +96,7 @@ exports.createItem = async (req, res) => {
 
     const item = await InventoryItem.create({
       ...req.body,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     // ✅ Populate seller for UI
@@ -111,7 +112,7 @@ exports.createItem = async (req, res) => {
 exports.getAllItems = async (req, res) => {
   try {
     const items = await InventoryItem.find({
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     })
       .populate('seller', 'name licenseNumber')
       .sort({ createdAt: -1 });
@@ -130,7 +131,7 @@ exports.getSingleItem = async (req, res) => {
   try {
     const item = await InventoryItem.findOne({
       _id: req.params.id,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     }).populate('seller', 'name licenseNumber');
 
     if (!item) {
@@ -154,7 +155,7 @@ exports.updateItem = async (req, res) => {
     if (req.body.seller) {
       const seller = await Seller.findOne({
         _id: req.body.seller,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       });
 
       if (!seller) {
@@ -166,7 +167,7 @@ exports.updateItem = async (req, res) => {
     }
 
     const item = await InventoryItem.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: getOwnerId(req) },
       req.body,
       { new: true, runValidators: true }
     ).populate('seller', 'name licenseNumber');
@@ -189,7 +190,7 @@ exports.deleteItem = async (req, res) => {
   try {
     const item = await InventoryItem.findOneAndDelete({
       _id: req.params.id,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!item) {
@@ -217,7 +218,7 @@ exports.addTransaction = async (req, res) => {
 
     const item = await InventoryItem.findOne({
       _id: itemId,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!item) {
@@ -281,7 +282,7 @@ exports.addTransaction = async (req, res) => {
       cost: Math.abs(qty) * item.unitCost,
       reason,
       notes,
-      createdBy: req.user._id   // ✅ important
+      createdBy: getOwnerId(req)   // ✅ important
     });
 
     res.status(201).json({
@@ -303,7 +304,7 @@ exports.getItemTransactions = async (req, res) => {
 
     const item = await InventoryItem.findOne({
       _id: req.params.itemId,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!item) {
@@ -315,7 +316,7 @@ exports.getItemTransactions = async (req, res) => {
 
     const transactions = await InventoryTransaction.find({
       itemId: req.params.itemId,
-      createdBy: req.user._id   // ✅ secure
+      createdBy: getOwnerId(req)   // ✅ secure
     })
       .populate('itemId', 'name category unit currentStock')
       .sort({ date: -1, createdAt: -1 });
@@ -341,7 +342,7 @@ exports.getLowStockItems = async (req, res) => {
     const items = await InventoryItem.find({
       $expr: { $lte: ['$currentStock', '$lowStockLimit'] },
       status: 'active',
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     })
       .populate('seller', 'name')
       .sort({ currentStock: 1 });

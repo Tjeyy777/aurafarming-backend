@@ -58,3 +58,12 @@ exports.authorize = (...roles) => {
     next();
   };
 };
+
+/**
+ * Returns the workspace owner ID for data scoping.
+ * - Admin → own _id
+ * - Staff → their admin's _id (adminId field)
+ */
+exports.getOwnerId = (req) => {
+  return req.user.adminId || req.user._id;
+};

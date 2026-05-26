@@ -1,5 +1,7 @@
 const Expense = require('../models/Expense');
 
+const { getOwnerId } = require("../middleware/authMiddleware");
+
 exports.createExpense = async (req, res) => {
   try {
     const { expenseName, amount, date, notes } = req.body;
@@ -18,7 +20,7 @@ exports.createExpense = async (req, res) => {
       amount: amountNumber,
       date,
       notes,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     res.status(201).json({
@@ -35,7 +37,7 @@ exports.createExpense = async (req, res) => {
 
 exports.getAllExpenses = async (req, res) => {
   try {
-    const filter = { isDeleted: false, createdBy: req.user._id };
+    const filter = { isDeleted: false, createdBy: getOwnerId(req) };
 
     if (req.query.date) {
       const targetDate = new Date(req.query.date);
@@ -79,7 +81,7 @@ exports.getSingleExpense = async (req, res) => {
     const expense = await Expense.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!expense) {
@@ -106,7 +108,7 @@ exports.updateExpense = async (req, res) => {
     const expense = await Expense.findOne({
       _id: req.params.id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!expense) {
@@ -158,7 +160,7 @@ exports.updateExpense = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findOneAndUpdate(
-      { _id: req.params.id, isDeleted: false, createdBy: req.user._id },
+      { _id: req.params.id, isDeleted: false, createdBy: getOwnerId(req) },
       { isDeleted: true },
       { new: true }
     );
@@ -184,7 +186,7 @@ exports.deleteExpense = async (req, res) => {
 
 exports.getExpenseSummary = async (req, res) => {
   try {
-    const matchFilter = { isDeleted: false, createdBy: req.user._id };
+    const matchFilter = { isDeleted: false, createdBy: getOwnerId(req) };
 
     if (req.query.date) {
       const targetDate = new Date(req.query.date);

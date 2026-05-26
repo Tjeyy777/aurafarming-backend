@@ -4,8 +4,12 @@ const {
   registerUser,
   loginUser,
   getMe,
+  createStaff,
+  getStaffList,
+  updateStaff,
+  deleteStaff,
 } = require("../controllers/authController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -31,5 +35,11 @@ router.post(
 );
 
 router.get("/me", protect, getMe);
+
+// ─── Staff Management (Admin only) ───
+router.post("/staff", protect, authorize("admin"), createStaff);
+router.get("/staff", protect, authorize("admin"), getStaffList);
+router.put("/staff/:id", protect, authorize("admin"), updateStaff);
+router.delete("/staff/:id", protect, authorize("admin"), deleteStaff);
 
 module.exports = router;

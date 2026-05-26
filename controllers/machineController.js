@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getOwnerId } = require("../middleware/authMiddleware");
 const Machine = require("../models/Machine");
 const MachineLog = require("../models/MachineLog");
 
@@ -19,7 +20,7 @@ exports.createMachine = async (req, res) => {
   try {
     const machine = await Machine.create({ 
       ...req.body, 
-      createdBy: req.user._id 
+      createdBy: getOwnerId(req) 
     });
 
     res.status(201).json({
@@ -33,7 +34,7 @@ exports.createMachine = async (req, res) => {
 
 exports.getAllMachines = async (req, res) => {
   try {
-    const filter = { isDeleted: false, createdBy: req.user._id };
+    const filter = { isDeleted: false, createdBy: getOwnerId(req) };
 
     if (req.query.machineType) filter.machineType = req.query.machineType;
     if (req.query.status) filter.status = req.query.status;
@@ -53,7 +54,7 @@ exports.getAllMachines = async (req, res) => {
 
 exports.getSingleMachine = async (req, res) => {
   try {
-    const machine = await Machine.findOne({ _id: req.params.id, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: req.params.id, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });
@@ -70,7 +71,7 @@ exports.getSingleMachine = async (req, res) => {
 
 exports.updateMachine = async (req, res) => {
   try {
-    const machine = await Machine.findOne({ _id: req.params.id, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: req.params.id, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });
@@ -92,7 +93,7 @@ exports.updateMachine = async (req, res) => {
 exports.deleteMachine = async (req, res) => {
   try {
     const machine = await Machine.findOneAndUpdate(
-      { _id: req.params.id, isDeleted: false, createdBy: req.user._id },
+      { _id: req.params.id, isDeleted: false, createdBy: getOwnerId(req) },
       { isDeleted: true },
       { new: true }
     );
@@ -111,7 +112,7 @@ exports.createMachineLog = async (req, res) => {
   try {
     const { machineId, date, closingMeterReading, notes } = req.body;
 
-    const machine = await Machine.findOne({ _id: machineId, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: machineId, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });
@@ -152,11 +153,11 @@ exports.getMachineLogs = async (req, res) => {
     const filter = {};
 
     if (req.query.machineId) {
-      const machine = await Machine.findOne({ _id: req.query.machineId, createdBy: req.user._id });
+      const machine = await Machine.findOne({ _id: req.query.machineId, createdBy: getOwnerId(req) });
       if (!machine) return res.status(404).json({ status: "error", message: "Machine not found" });
       filter.machineId = req.query.machineId;
     } else {
-      const userMachines = await Machine.find({ createdBy: req.user._id, isDeleted: false }, "_id");
+      const userMachines = await Machine.find({ createdBy: getOwnerId(req), isDeleted: false }, "_id");
       filter.machineId = { $in: userMachines.map((m) => m._id) };
     }
 
@@ -181,7 +182,7 @@ exports.getMachineLogs = async (req, res) => {
 
 exports.getMachineLogHistory = async (req, res) => {
   try {
-    const machine = await Machine.findOne({ _id: req.params.machineId, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: req.params.machineId, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });
@@ -203,7 +204,7 @@ exports.updateMachineLog = async (req, res) => {
       return res.status(404).json({ status: "error", message: "Machine log not found" });
     }
 
-    const machine = await Machine.findOne({ _id: log.machineId, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: log.machineId, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });
@@ -251,7 +252,7 @@ exports.deleteMachineLog = async (req, res) => {
       return res.status(404).json({ status: "error", message: "Machine log not found" });
     }
 
-    const machine = await Machine.findOne({ _id: log.machineId, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: log.machineId, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(403).json({ status: "error", message: "Not authorized to delete this log" });
@@ -277,7 +278,7 @@ exports.deleteMachineLog = async (req, res) => {
 
 exports.markServiceDone = async (req, res) => {
   try {
-    const machine = await Machine.findOne({ _id: req.params.id, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: req.params.id, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });
@@ -307,7 +308,7 @@ exports.getServiceAlerts = async (req, res) => {
     const machines = await Machine.find({
       isDeleted: false,
       serviceReminderEnabled: true,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     }).sort({ currentMeterReading: -1 });
 
     const mapped = machines.map((m) => ({ ...m.toObject(), ...getServiceStatus(m) }));
@@ -329,7 +330,7 @@ exports.getMachineSummary = async (req, res) => {
   try {
     const machineId = new mongoose.Types.ObjectId(req.params.machineId);
 
-    const machine = await Machine.findOne({ _id: machineId, isDeleted: false, createdBy: req.user._id });
+    const machine = await Machine.findOne({ _id: machineId, isDeleted: false, createdBy: getOwnerId(req) });
 
     if (!machine) {
       return res.status(404).json({ status: "error", message: "Machine not found" });

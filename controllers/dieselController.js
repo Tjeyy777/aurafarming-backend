@@ -1,4 +1,5 @@
 const DieselEntry = require('../models/DieselEntry');
+const { getOwnerId } = require("../middleware/authMiddleware");
 const Machine = require('../models/Machine');
 
 exports.createDieselEntry = async (req, res) => {
@@ -24,7 +25,7 @@ exports.createDieselEntry = async (req, res) => {
       const machine = await Machine.findOne({
         _id: machineId,
         isDeleted: false,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       });
 
       if (!machine) {
@@ -49,7 +50,7 @@ exports.createDieselEntry = async (req, res) => {
       pricePerLitre: priceNumber,
       totalCost,
       notes,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     const populatedEntry = await DieselEntry.findById(dieselEntry._id).populate(
@@ -65,7 +66,7 @@ exports.createDieselEntry = async (req, res) => {
 
 exports.getAllDieselEntries = async (req, res) => {
   try {
-    const filter = { createdBy: req.user._id };
+    const filter = { createdBy: getOwnerId(req) };
 
     if (req.query.dieselFor) filter.dieselFor = req.query.dieselFor;
     if (req.query.machineId) filter.machineId = req.query.machineId;
@@ -91,7 +92,7 @@ exports.getSingleDieselEntry = async (req, res) => {
   try {
     const entry = await DieselEntry.findOne({
       _id: req.params.id,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     }).populate('machineId', 'machineName machineCode machineType');
 
     if (!entry) {
@@ -108,7 +109,7 @@ exports.updateDieselEntry = async (req, res) => {
   try {
     const existingEntry = await DieselEntry.findOne({
       _id: req.params.id,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!existingEntry) {
@@ -137,7 +138,7 @@ exports.updateDieselEntry = async (req, res) => {
       const machine = await Machine.findOne({
         _id: machineId,
         isDeleted: false,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       });
 
       if (!machine) {
@@ -181,7 +182,7 @@ exports.deleteDieselEntry = async (req, res) => {
   try {
     const entry = await DieselEntry.findOneAndDelete({
       _id: req.params.id,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!entry) {
@@ -200,7 +201,7 @@ exports.getOwnedMachinesForDiesel = async (req, res) => {
       isDeleted: false,
       status: 'active',
       fuelType: 'diesel',
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     })
       .select('machineName machineCode machineType currentMeterReading')
       .sort({ machineName: 1 });

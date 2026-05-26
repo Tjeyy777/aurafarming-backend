@@ -1,11 +1,12 @@
 const ConsumableItem = require('../models/ConsumableItem');
+const { getOwnerId } = require("../middleware/authMiddleware");
 const ConsumableTransaction = require('../models/ConsumbaleTransaction');
 
 exports.createItem = async (req, res) => {
   try {
     const item = await ConsumableItem.create({
       ...req.body,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     res.status(201).json({ status: 'success', data: item });
@@ -16,7 +17,7 @@ exports.createItem = async (req, res) => {
 
 exports.getAllItems = async (req, res) => {
   try {
-    const filter = { createdBy: req.user._id };
+    const filter = { createdBy: getOwnerId(req) };
 
     if (req.query.category) filter.category = req.query.category;
     if (req.query.status) filter.status = req.query.status;
@@ -33,7 +34,7 @@ exports.getSingleItem = async (req, res) => {
   try {
     const item = await ConsumableItem.findOne({
       _id: req.params.id,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     if (!item) {
@@ -49,7 +50,7 @@ exports.getSingleItem = async (req, res) => {
 exports.updateItem = async (req, res) => {
   try {
     const item = await ConsumableItem.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: getOwnerId(req) },
       req.body,
       { new: true, runValidators: true }
     );
@@ -68,7 +69,7 @@ exports.deleteItem = async (req, res) => {
   try {
     const item = await ConsumableItem.findOneAndDelete({
       _id: req.params.id,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     if (!item) {
@@ -87,7 +88,7 @@ exports.addTransaction = async (req, res) => {
 
     const item = await ConsumableItem.findOne({
       _id: itemId,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     if (!item) {
@@ -141,7 +142,7 @@ exports.getItemTransactions = async (req, res) => {
     // Verify item belongs to this user
     const item = await ConsumableItem.findOne({
       _id: req.params.itemId,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     });
 
     if (!item) {
@@ -163,7 +164,7 @@ exports.getLowStockItems = async (req, res) => {
     const items = await ConsumableItem.find({
       $expr: { $lte: ['$currentStock', '$lowStockLimit'] },
       status: 'active',
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
     }).sort({ currentStock: 1 });
 
     res.status(200).json({ status: 'success', results: items.length, data: items });

@@ -23,8 +23,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "manager", "staff"],
+      enum: ["admin", "staff"],
       default: "admin",
+    },
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null, // null = this user IS an admin (workspace owner)
     },
     isActive: {
       type: Boolean,

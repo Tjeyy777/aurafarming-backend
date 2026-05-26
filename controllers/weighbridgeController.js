@@ -1,5 +1,7 @@
 const WeighbridgeEntry = require('../models/weighbridgeModel');
 
+const { getOwnerId } = require("../middleware/authMiddleware");
+
 const normalizeVehicleNumber = (vehicleNumber = '') =>
   vehicleNumber.trim().toUpperCase();
 
@@ -122,7 +124,7 @@ exports.createWeighbridgeEntry = async (req, res) => {
       vehicleNumber: normalizedVehicleNumber,
       status: 'open',
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (existingOpenEntry) {
@@ -137,7 +139,7 @@ exports.createWeighbridgeEntry = async (req, res) => {
       driverName,
       emptyWeight,
       remarks,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     };
 
     if (entryTime !== undefined) {
@@ -181,7 +183,7 @@ exports.completeWeighbridgeEntry = async (req, res) => {
     const entry = await WeighbridgeEntry.findOne({
       _id: id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!entry) {
@@ -255,7 +257,7 @@ exports.getPreviousVehicleWeight = async (req, res) => {
     const previousEntry = await WeighbridgeEntry.findOne({
       vehicleNumber: normalizedVehicleNumber,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     }).sort({ entryTime: -1, createdAt: -1 });
 
     if (!previousEntry) {
@@ -298,7 +300,7 @@ exports.getAllWeighbridgeEntries = async (req, res) => {
     const { currentPage, perPage, skip } = getPaginationValues(page, limit, 20);
 
     const tzOffset = getTzOffset(req);
-    const filter = { isDeleted: false, createdBy: req.user._id };
+    const filter = { isDeleted: false, createdBy: getOwnerId(req) };
 
     if (status) {
       filter.status = status;
@@ -424,7 +426,7 @@ exports.updateWeighbridgeEntry = async (req, res) => {
     const entry = await WeighbridgeEntry.findOne({
       _id: id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!entry) {
@@ -454,7 +456,7 @@ exports.updateWeighbridgeEntry = async (req, res) => {
         vehicleNumber: nextVehicleNumber,
         status: 'open',
         isDeleted: false,
-        createdBy: req.user._id
+        createdBy: getOwnerId(req)
       });
 
       if (existingOpenEntry) {
@@ -543,7 +545,7 @@ exports.deleteWeighbridgeEntry = async (req, res) => {
     const entry = await WeighbridgeEntry.findOne({
       _id: id,
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     });
 
     if (!entry) {
@@ -577,7 +579,7 @@ exports.getOpenEntries = async (req, res) => {
     const filter = {
       status: 'open',
       isDeleted: false,
-      createdBy: req.user._id
+      createdBy: getOwnerId(req)
     };
 
     const [entries, totalRecords] = await Promise.all([
@@ -622,7 +624,7 @@ exports.getTodayEntries = async (req, res) => {
 
     const filter = {
       isDeleted: false,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
       entryTime: {
         $gte: getStartOfDay(now, tzOffset),
         $lte: getEndOfDay(now, tzOffset)
@@ -672,7 +674,7 @@ exports.getProductionSummary = async (req, res) => {
           $match: {
             isDeleted: false,
             status: 'completed',
-            createdBy: req.user._id,
+            createdBy: getOwnerId(req),
             entryTime: {
               $gte: getStartOfDay(now, tzOffset),
               $lte: getEndOfDay(now, tzOffset)
@@ -692,7 +694,7 @@ exports.getProductionSummary = async (req, res) => {
           $match: {
             isDeleted: false,
             status: 'completed',
-            createdBy: req.user._id,
+            createdBy: getOwnerId(req),
             entryTime: {
               $gte: getStartOfWeek(now, tzOffset),
               $lte: getEndOfWeek(now, tzOffset)
@@ -712,7 +714,7 @@ exports.getProductionSummary = async (req, res) => {
           $match: {
             isDeleted: false,
             status: 'completed',
-            createdBy: req.user._id,
+            createdBy: getOwnerId(req),
             entryTime: {
               $gte: getStartOfMonth(now, tzOffset),
               $lte: getEndOfMonth(now, tzOffset)
@@ -756,7 +758,7 @@ exports.getDailyHistorySummary = async (req, res) => {
       {
         $match: {
           isDeleted: false,
-          createdBy: req.user._id
+          createdBy: getOwnerId(req)
         }
       },
       {
@@ -849,7 +851,7 @@ exports.getEntriesByDay = async (req, res) => {
 
     const filter = {
       isDeleted: false,
-      createdBy: req.user._id,
+      createdBy: getOwnerId(req),
       entryTime: {
         $gte: getStartOfDay(selectedDate, tzOffset),
         $lte: getEndOfDay(selectedDate, tzOffset)
