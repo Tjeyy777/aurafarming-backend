@@ -145,7 +145,7 @@ exports.deleteRentedVehicle = async (req, res) => {
 
 exports.createRentedLog = async (req, res) => {
   try {
-    const { vehicleId, date, openingMeter, closingMeter, driverName, remarks, isTrip, parentLogId, tripPurpose } = req.body;
+    const { vehicleId, date, openingMeter, closingMeter, driverName, remarks, isTrip, parentLogId, tripPurpose, companyId } = req.body;
 
     // Verify vehicle exists and belongs to user
     const vehicle = await RentedVehicle.findOne({
@@ -181,12 +181,16 @@ exports.createRentedLog = async (req, res) => {
       isTrip: isTrip || false,
       parentLogId: parentLogId || null,
       tripPurpose: tripPurpose || '',
+      companyId: companyId || null,
       hourlyRate: vehicle.hourlyRate,
       createdBy: getOwnerId(req)
     });
 
     // Populate vehicle details
     await log.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
+    if (companyId) {
+      await log.populate('companyId', 'name');
+    }
 
     res.status(201).json({
       status: 'success',
@@ -246,6 +250,7 @@ exports.getRentedLogs = async (req, res) => {
 
     const logs = await RentedMachineLog.find(filter)
       .populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName')
+      .populate('companyId', 'name')
       .sort({ date: -1, createdAt: -1 });
 
     res.status(200).json({
@@ -287,7 +292,10 @@ exports.updateRentedLog = async (req, res) => {
     }
 
     // Validate closing meter if being updated
-    const newClosing = req.body.closingMeter !== undefined ? Number(req.body.closingMeter) : log.closingMeter;
+    let newClosing = log.closingMeter;
+    if (req.body.closingMeter !== undefined) {
+      newClosing = req.body.closingMeter === null ? null : Number(req.body.closingMeter);
+    }
     const newOpening = req.body.openingMeter !== undefined ? Number(req.body.openingMeter) : log.openingMeter;
 
     if (newClosing !== null && newClosing < newOpening) {
@@ -306,11 +314,15 @@ exports.updateRentedLog = async (req, res) => {
     if (req.body.driverName !== undefined) log.driverName = req.body.driverName;
     if (req.body.remarks !== undefined) log.remarks = req.body.remarks;
     if (req.body.tripPurpose !== undefined) log.tripPurpose = req.body.tripPurpose;
+    if (req.body.companyId !== undefined) log.companyId = req.body.companyId || null;
     if (req.body.entryTime !== undefined) log.entryTime = req.body.entryTime;
     if (req.body.exitTime !== undefined) log.exitTime = req.body.exitTime;
 
     await log.save();
     await log.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
+    if (log.companyId) {
+      await log.populate('companyId', 'name');
+    }
 
     res.status(200).json({
       status: 'success',
@@ -401,10 +413,14 @@ exports.createTripFromLog = async (req, res) => {
       openingMeter: Number(openingMeter),
       closingMeter: closingMeter !== null && closingMeter !== undefined ? Number(closingMeter) : null,
       hourlyRate: parentLog.vehicleId.hourlyRate,
+      companyId: req.body.companyId || parentLog.companyId,
       createdBy: getOwnerId(req)
     });
 
     await tripLog.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
+    if (tripLog.companyId) {
+      await tripLog.populate('companyId', 'name');
+    }
 
     res.status(201).json({
       status: 'success',

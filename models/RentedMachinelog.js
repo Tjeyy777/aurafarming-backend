@@ -14,6 +14,11 @@ const rentedMachineLogSchema = new mongoose.Schema(
       ref: 'RentedMachineLog',
       default: null
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Party',
+      default: null
+    },
     isTrip: {
       type: Boolean,
       default: false
