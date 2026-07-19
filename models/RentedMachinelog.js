@@ -28,6 +28,11 @@ const rentedMachineLogSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    workTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'WorkType',
+      default: null
+    },
 
     // Entry details
     date: {

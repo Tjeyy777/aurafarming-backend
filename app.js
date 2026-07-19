@@ -17,6 +17,7 @@ const weighbridgeRoutes = require("./routes/weighbridgeRoutes");
 const rentedMachineRoutes = require("./routes/rentedMachineRoutes");
 const authRoutes = require("./routes/authRoutes");
 const partiesRoutes = require("./routes/partyRoutes");
+const workTypeRoutes = require("./routes/workTypeRoutes");
 
 const { protect } = require("./middleware/authMiddleware");
 
@@ -104,6 +105,7 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/weighbridge", protect, weighbridgeRoutes);
 app.use("/api/expenses", protect, expenseRoutes);
 app.use("/api/parties", protect, partiesRoutes);
+app.use("/api/work-types", protect, workTypeRoutes);
 app.use("/api/diesel", protect, dieselRoutes);
 app.use("/api/machines", protect, machineRoutes);
 app.use("/api/rented-machines", protect, rentedMachineRoutes);

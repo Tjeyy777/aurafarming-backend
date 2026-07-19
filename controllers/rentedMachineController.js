@@ -145,7 +145,7 @@ exports.deleteRentedVehicle = async (req, res) => {
 
 exports.createRentedLog = async (req, res) => {
   try {
-    const { vehicleId, date, openingMeter, closingMeter, driverName, remarks, isTrip, parentLogId, tripPurpose, companyId } = req.body;
+    const { vehicleId, date, openingMeter, closingMeter, driverName, remarks, isTrip, parentLogId, tripPurpose, companyId, workTypeId } = req.body;
 
     // Verify vehicle exists and belongs to user
     const vehicle = await RentedVehicle.findOne({
@@ -182,6 +182,7 @@ exports.createRentedLog = async (req, res) => {
       parentLogId: parentLogId || null,
       tripPurpose: tripPurpose || '',
       companyId: companyId || null,
+      workTypeId: workTypeId || null,
       hourlyRate: vehicle.hourlyRate,
       createdBy: getOwnerId(req)
     });
@@ -190,6 +191,9 @@ exports.createRentedLog = async (req, res) => {
     await log.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
     if (companyId) {
       await log.populate('companyId', 'name');
+    }
+    if (workTypeId) {
+      await log.populate('workTypeId', 'name');
     }
 
     res.status(201).json({
@@ -251,6 +255,7 @@ exports.getRentedLogs = async (req, res) => {
     const logs = await RentedMachineLog.find(filter)
       .populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName')
       .populate('companyId', 'name')
+      .populate('workTypeId', 'name')
       .sort({ date: -1, createdAt: -1 });
 
     res.status(200).json({
@@ -315,6 +320,7 @@ exports.updateRentedLog = async (req, res) => {
     if (req.body.remarks !== undefined) log.remarks = req.body.remarks;
     if (req.body.tripPurpose !== undefined) log.tripPurpose = req.body.tripPurpose;
     if (req.body.companyId !== undefined) log.companyId = req.body.companyId || null;
+    if (req.body.workTypeId !== undefined) log.workTypeId = req.body.workTypeId || null;
     if (req.body.entryTime !== undefined) log.entryTime = req.body.entryTime;
     if (req.body.exitTime !== undefined) log.exitTime = req.body.exitTime;
 
@@ -322,6 +328,9 @@ exports.updateRentedLog = async (req, res) => {
     await log.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
     if (log.companyId) {
       await log.populate('companyId', 'name');
+    }
+    if (log.workTypeId) {
+      await log.populate('workTypeId', 'name');
     }
 
     res.status(200).json({
@@ -414,12 +423,16 @@ exports.createTripFromLog = async (req, res) => {
       closingMeter: closingMeter !== null && closingMeter !== undefined ? Number(closingMeter) : null,
       hourlyRate: parentLog.vehicleId.hourlyRate,
       companyId: req.body.companyId || parentLog.companyId,
+      workTypeId: req.body.workTypeId || parentLog.workTypeId || null,
       createdBy: getOwnerId(req)
     });
 
     await tripLog.populate('vehicleId', 'vehicleNumber vehicleType hourlyRate ownerName');
     if (tripLog.companyId) {
       await tripLog.populate('companyId', 'name');
+    }
+    if (tripLog.workTypeId) {
+      await tripLog.populate('workTypeId', 'name');
     }
 
     res.status(201).json({
