@@ -474,8 +474,11 @@ exports.getRentedSummary = async (req, res) => {
     const logs = await RentedMachineLog.find(filter);
 
     // Separate main entries and trips
-    const mainEntries = logs.filter(l => !l.isTrip && l.closingMeter !== null);
-    const trips = logs.filter(l => l.isTrip && l.closingMeter !== null);
+    // NOTE: Do NOT filter by closingMeter here — entries with null closingMeter
+    // already have cost=0 and totalHours=0 from the pre-save hook.
+    // Filtering them out caused the summary totals to mismatch the frontend table/PDF.
+    const mainEntries = logs.filter(l => !l.isTrip);
+    const trips = logs.filter(l => l.isTrip);
 
     const ourHours = mainEntries.reduce((sum, l) => sum + (l.totalHours || 0), 0);
     const tripHours = trips.reduce((sum, l) => sum + (l.totalHours || 0), 0);
